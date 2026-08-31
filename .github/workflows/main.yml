@@ -3,24 +3,54 @@ name: 自动任务-修改Zepp当天运动数据
 on:
   workflow_dispatch:
   schedule:
-    # 临时测试：每 5 分钟执行一次，确认 GitHub Actions 的 schedule 链路正常。
-    # GitHub Actions 使用 UTC；测试通过后恢复为每天 13:00。
-    - cron: '*/5 * * * *'
+    # 北京时间每天 13:00
+    - cron: '0 13 * * *'
+      timezone: 'Asia/Shanghai'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zepp-sport-robot
+  cancel-in-progress: false
 
 jobs:
   run-python-script:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-      - name: '检出仓库代码'
+      - name: 检出仓库代码
         uses: actions/checkout@v6
-      - name: '设置 Python 环境'
+
+      - name: 设置 Python 环境
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12.0'
-      - name: '安装依赖项'
-        run: pip install requests==2.26.0
-      - name: '运行主程序'
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安装依赖项
+        run: python -m pip install requests==2.26.0
+
+      - name: 检查运行环境
+        run: |
+          echo "UTC: $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "Runner: $RUNNER_OS / $RUNNER_ARCH"
+          python --version
+          python -c "import requests; print('requests:', requests.__version__)"
+
+      - name: 检查 Secrets
         env:
           ACCOUNT: ${{ secrets.ACCOUNT }}
           PASSWORD: ${{ secrets.PASSWORD }}
-        run: python ./main.py
+        run: |
+          test -n "$ACCOUNT" || { echo '::error::ACCOUNT Secret 未配置或为空'; exit 1; }
+          test -n "$PASSWORD" || { echo '::error::PASSWORD Secret 未配置或为空'; exit 1; }
+          echo 'ACCOUNT / PASSWORD 已配置'
+
+      - name: 运行主程序
+        env:
+          ACCOUNT: ${{ secrets.ACCOUNT }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          PYTHONUNBUFFERED: '1'
+        run: python -u ./main.py
