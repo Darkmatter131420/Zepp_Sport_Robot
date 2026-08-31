@@ -3,7 +3,9 @@ name: 自动任务-修改Zepp当天运动数据
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 13 * * *'
+    # 临时测试：每 5 分钟执行一次，确认 GitHub Actions 的 schedule 链路正常。
+    # GitHub Actions 使用 UTC；测试通过后恢复为每天 13:00。
+    - cron: '*/5 * * * *'
 
 jobs:
   run-python-script:
